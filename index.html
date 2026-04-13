@@ -36,7 +36,7 @@
             font-size: 0.9rem;
             color: #cbd5e1;
         }
-        select, textarea {
+        select, textarea, input[type="file"] {
             width: 100%;
             background-color: #0f172a;
             color: #f8fafc;
@@ -51,9 +51,23 @@
             resize: vertical;
             height: 120px;
         }
-        select:focus, textarea:focus {
+        select:focus, textarea:focus, input[type="file"]:focus {
             outline: none;
             border-color: #3b82f6;
+        }
+        /* Custom styling for the file input to make it match the dark theme */
+        input[type="file"]::file-selector-button {
+            background-color: #334155;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background-color: #475569;
         }
         button {
             width: 100%;
@@ -81,20 +95,22 @@
     <div class="dashboard">
         <h2>System Broadcast</h2>
         
-        <label for="channelSelect">Select Destination Channel</label>
+        <label for="channelSelect">Destination Channel</label>
         <select id="channelSelect">
             <option value="">Loading channels...</option>
         </select>
 
-        <label for="messageInput">Message Content</label>
+        <label for="messageInput">Message Content (Optional if sending a file)</label>
         <textarea id="messageInput" placeholder="Type your broadcast here..."></textarea>
+
+        <label for="fileInput">Attach File / Photo (Max 8MB)</label>
+        <input type="file" id="fileInput">
 
         <button onclick="transmitMessage()">Send to Server</button>
         <div id="status"></div>
     </div>
 
     <script>
-        // 1. Fetch channels when the page loads
         async function loadChannels() {
             try {
                 const response = await fetch('/.netlify/functions/getChannels');
@@ -103,7 +119,6 @@
                 const select = document.getElementById('channelSelect');
                 select.innerHTML = '<option value="">-- Choose a Channel --</option>';
                 
-                // Sort channels alphabetically and add to dropdown
                 channels.sort((a, b) => a.name.localeCompare(b.name)).forEach(channel => {
                     const option = document.createElement('option');
                     option.value = channel.id;
@@ -115,32 +130,59 @@
             }
         }
 
-        // 2. Send the message when the button is clicked
         async function transmitMessage() {
             const channelId = document.getElementById('channelSelect').value;
             const message = document.getElementById('messageInput').value;
+            const fileInput = document.getElementById('fileInput');
             const statusText = document.getElementById('status');
 
-            if (!channelId || !message) {
+            if (!channelId) {
                 statusText.style.color = '#ef4444';
-                statusText.innerText = 'Please select a channel and enter a message.';
+                statusText.innerText = 'Please select a channel first.';
+                return;
+            }
+
+            if (!message && fileInput.files.length === 0) {
+                statusText.style.color = '#ef4444';
+                statusText.innerText = 'Please enter a message or attach a file.';
                 return;
             }
 
             statusText.style.color = '#94a3b8';
+            statusText.innerText = 'Preparing payload...';
+
+            let fileData = null;
+            let fileName = null;
+            let mimeType = null;
+
+            // If a file is selected, read it as Base64
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                fileName = file.name;
+                mimeType = file.type;
+                
+                statusText.innerText = 'Converting file...';
+                const reader = new FileReader();
+                fileData = await new Promise((resolve) => {
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(file);
+                });
+            }
+
             statusText.innerText = 'Transmitting...';
 
             try {
                 const response = await fetch('/.netlify/functions/sendMessage', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ channelId, message })
+                    body: JSON.stringify({ channelId, message, fileData, fileName, mimeType })
                 });
 
                 if (response.ok) {
                     statusText.style.color = '#22c55e';
-                    statusText.innerText = 'Message transmitted successfully.';
-                    document.getElementById('messageInput').value = ''; // Clear input
+                    statusText.innerText = 'Broadcast transmitted successfully.';
+                    document.getElementById('messageInput').value = ''; 
+                    document.getElementById('fileInput').value = ''; // Clear file
                 } else {
                     throw new Error('Transmission failed');
                 }
@@ -150,7 +192,6 @@
             }
         }
 
-        // Initialize
         loadChannels();
     </script>
 </body>
