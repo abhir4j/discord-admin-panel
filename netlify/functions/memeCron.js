@@ -48,12 +48,6 @@ const handler = async (event) => {
             body: JSON.stringify(discordPayload)
         });
 
-        console.log("High-quality Hinglish meme delivered!");
-        return { statusCode: 200 };
-    } catch (error) {
-        console.error("Meme delivery failed:", error);
-        return { statusCode: 500 };
-    }
 };
 
 // Runs every 30 minutes
