@@ -45,6 +45,18 @@
         <button class="yt-btn" onclick="sendTTS()">Speak in Voice Channel</button>
         <button class="disconnect-btn" onclick="disconnectBot()">Disconnect Bot</button>
 
+        <hr>
+        <h2>Instant Soundboard</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button onclick="playSFX('atmkbfjg-echo')" style="background-color: #f59e0b;"> atmkbfjg-echo </button>
+            <button onclick="playSFX('bol-na-madarchod')" style="background-color: #f59e0b;"> bol-na-madarchod</button>
+            <button onclick="playSFX('cid-acp-mc')" style="background-color: #f59e0b;">cid-acp-mc</button>
+            <button onclick="playSFX('cid-le-mdc')" style="background-color: #f59e0b;">cid-le-mdc</button>
+            <button onclick="playSFX('gopgopgop')" style="background-color: #f59e0b;">gopgopgop</button>
+            <button onclick="playSFX('kyu-re-madarchod-cid')" style="background-color: #f59e0b;">kyu-re-madarchod-cid</button>
+            
+        </div>
+
         <div id="status"></div>
     </div>
 
@@ -156,6 +168,39 @@
             } catch (error) { 
                 statusText.style.color = '#ef4444'; 
                 statusText.innerText = 'Error sending disconnect command.'; 
+            }
+        }
+
+        async function playSFX(soundName) {
+            const vcId = document.getElementById('channelSelect').value;
+            const statusText = document.getElementById('status');
+
+            if (!vcId) { 
+                statusText.style.color = '#ef4444'; 
+                statusText.innerText = 'Select a Voice Channel first.'; 
+                return; 
+            }
+            
+            statusText.style.color = '#94a3b8'; 
+            statusText.innerText = `Deploying ${soundName}.mp3...`;
+
+            // Format the command: CMD:SFX:VoiceChannelID:soundName
+            const commandPayload = `CMD:SFX:${vcId}:${soundName}`;
+
+            try {
+                const response = await fetch('/.netlify/functions/sendMessage', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId: HIDDEN_CHANNEL_ID, message: commandPayload })
+                });
+                
+                if (response.ok) { 
+                    statusText.style.color = '#22c55e'; 
+                    statusText.innerText = 'Sound effect deployed!'; 
+                }
+            } catch (error) { 
+                statusText.style.color = '#ef4444'; 
+                statusText.innerText = 'Error sending SFX command.'; 
             }
         }
 
