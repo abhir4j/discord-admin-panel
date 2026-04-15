@@ -11,12 +11,14 @@
         label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #cbd5e1; }
         select, textarea, input[type="text"], input[type="file"] { width: 100%; background-color: #0f172a; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 12px; margin-bottom: 20px; box-sizing: border-box; }
         textarea { resize: vertical; height: 80px; }
-        button { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        button { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: background-color 0.2s; }
         button:hover { background-color: #2563eb; }
         .yt-btn { background-color: #ef4444; }
         .yt-btn:hover { background-color: #dc2626; }
-        #status { margin-top: 15px; font-size: 0.9rem; text-align: center; }
-        hr { border: 0; height: 1px; background: #334155; margin: 20px 0; }
+        .disconnect-btn { background-color: #64748b; margin-top: 5px; }
+        .disconnect-btn:hover { background-color: #475569; }
+        #status { margin-top: 15px; font-size: 0.9rem; text-align: center; font-weight: 500; }
+        hr { border: 0; height: 1px; background: #334155; margin: 25px 0; }
     </style>
 </head>
 <body>
@@ -37,16 +39,19 @@
         
         <hr>
 
-        <h2>Voice Command (Requires PC Worker)</h2>
-        <label for="ytLinkInput">YouTube Link</label>
-        <input type="text" id="ytLinkInput" placeholder="Paste YouTube Link here...">
-        <button class="yt-btn" onclick="streamYouTube()">Stream to Voice Channel</button>
+        <h2>Voice Command (TTS)</h2>
+        <label for="ttsInput">Text to Speak</label>
+        <textarea id="ttsInput" placeholder="Type what you want the bot to say out loud..."></textarea>
+        <button class="yt-btn" onclick="sendTTS()">Speak in Voice Channel</button>
+        <button class="disconnect-btn" onclick="disconnectBot()">Disconnect Bot</button>
 
         <div id="status"></div>
     </div>
 
     <script>
-        // --- PUT YOUR HIDDEN CHANNEL ID HERE ---
+        // ==========================================
+        // 🛑 PASTE YOUR HIDDEN CHANNEL ID BELOW 🛑
+        // ==========================================
         const HIDDEN_CHANNEL_ID = "1489694829515640902"; 
 
         async function loadChannels() {
@@ -71,6 +76,7 @@
             const statusText = document.getElementById('status');
 
             if (!channelId) { statusText.style.color = '#ef4444'; statusText.innerText = 'Select a channel first.'; return; }
+            if (!message && fileInput.files.length === 0) { statusText.style.color = '#ef4444'; statusText.innerText = 'Please enter a message or attach a file.'; return; }
 
             statusText.style.color = '#94a3b8'; statusText.innerText = 'Transmitting...';
             let fileData = null, fileName = null, mimeType = null;
@@ -88,28 +94,69 @@
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ channelId, message, fileData, fileName, mimeType })
                 });
-                if (response.ok) { statusText.style.color = '#22c55e'; statusText.innerText = 'Transmitted successfully.'; } 
+                if (response.ok) { 
+                    statusText.style.color = '#22c55e'; 
+                    statusText.innerText = 'Broadcast transmitted successfully.'; 
+                    document.getElementById('messageInput').value = ''; 
+                    document.getElementById('fileInput').value = ''; 
+                } 
                 else { throw new Error('Transmission failed'); }
             } catch (error) { statusText.style.color = '#ef4444'; statusText.innerText = 'Error sending message.'; }
         }
 
-        async function streamYouTube() {
+        async function sendTTS() {
             const vcId = document.getElementById('channelSelect').value;
-            const ytLink = document.getElementById('ytLinkInput').value;
+            const text = document.getElementById('ttsInput').value;
             const statusText = document.getElementById('status');
 
-            if (!vcId || !ytLink) { statusText.style.color = '#ef4444'; statusText.innerText = 'Select a Voice Channel and paste a YouTube link.'; return; }
-            statusText.style.color = '#94a3b8'; statusText.innerText = 'Sending command to local worker...';
+            if (!vcId || !text) { statusText.style.color = '#ef4444'; statusText.innerText = 'Select a Voice Channel and enter text.'; return; }
+            statusText.style.color = '#94a3b8'; statusText.innerText = 'Sending TTS command...';
 
-            const commandPayload = `CMD:PLAY_YT:${vcId}:${ytLink}`;
+            const commandPayload = `CMD:TTS:${vcId}:${text}`;
 
             try {
                 const response = await fetch('/.netlify/functions/sendMessage', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ channelId: HIDDEN_CHANNEL_ID, message: commandPayload })
                 });
-                if (response.ok) { statusText.style.color = '#22c55e'; statusText.innerText = 'Command sent! Bot should join VC momentarily.'; }
+                if (response.ok) { 
+                    statusText.style.color = '#22c55e'; 
+                    statusText.innerText = 'TTS Command sent!'; 
+                    document.getElementById('ttsInput').value = ''; 
+                }
             } catch (error) { statusText.style.color = '#ef4444'; statusText.innerText = 'Error sending command.'; }
+        }
+
+        async function disconnectBot() {
+            const vcId = document.getElementById('channelSelect').value;
+            const statusText = document.getElementById('status');
+
+            if (!vcId) { 
+                statusText.style.color = '#ef4444'; 
+                statusText.innerText = 'Select the Voice Channel the bot is in first.'; 
+                return; 
+            }
+            
+            statusText.style.color = '#94a3b8'; 
+            statusText.innerText = 'Sending disconnect command...';
+
+            const commandPayload = `CMD:DISCONNECT:${vcId}`;
+
+            try {
+                const response = await fetch('/.netlify/functions/sendMessage', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId: HIDDEN_CHANNEL_ID, message: commandPayload })
+                });
+                
+                if (response.ok) { 
+                    statusText.style.color = '#22c55e'; 
+                    statusText.innerText = 'Bot disconnected successfully!'; 
+                }
+            } catch (error) { 
+                statusText.style.color = '#ef4444'; 
+                statusText.innerText = 'Error sending disconnect command.'; 
+            }
         }
 
         loadChannels();
