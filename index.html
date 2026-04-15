@@ -5,89 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Server Admin Panel</title>
     <style>
-        body {
-            background-color: #0f172a;
-            color: #e2e8f0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .dashboard {
-            background-color: #1e293b;
-            padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            width: 100%;
-            max-width: 450px;
-        }
-        h2 {
-            margin-top: 0;
-            color: #f8fafc;
-            border-bottom: 2px solid #334155;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-            color: #cbd5e1;
-        }
-        select, textarea, input[type="file"] {
-            width: 100%;
-            background-color: #0f172a;
-            color: #f8fafc;
-            border: 1px solid #334155;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-            font-family: inherit;
-        }
-        textarea {
-            resize: vertical;
-            height: 120px;
-        }
-        select:focus, textarea:focus, input[type="file"]:focus {
-            outline: none;
-            border-color: #3b82f6;
-        }
-        /* Custom styling for the file input to make it match the dark theme */
-        input[type="file"]::file-selector-button {
-            background-color: #334155;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            margin-right: 10px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        input[type="file"]::file-selector-button:hover {
-            background-color: #475569;
-        }
-        button {
-            width: 100%;
-            background-color: #3b82f6;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        button:hover {
-            background-color: #2563eb;
-        }
-        #status {
-            margin-top: 15px;
-            font-size: 0.9rem;
-            text-align: center;
-        }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .dashboard { background-color: #1e293b; padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 450px; overflow-y: auto; max-height: 90vh; }
+        h2 { margin-top: 0; color: #f8fafc; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #cbd5e1; }
+        select, textarea, input[type="text"], input[type="file"] { width: 100%; background-color: #0f172a; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 12px; margin-bottom: 20px; box-sizing: border-box; }
+        textarea { resize: vertical; height: 80px; }
+        button { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        button:hover { background-color: #2563eb; }
+        .yt-btn { background-color: #ef4444; }
+        .yt-btn:hover { background-color: #dc2626; }
+        #status { margin-top: 15px; font-size: 0.9rem; text-align: center; }
+        hr { border: 0; height: 1px; background: #334155; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -96,38 +25,43 @@
         <h2>System Broadcast</h2>
         
         <label for="channelSelect">Destination Channel</label>
-        <select id="channelSelect">
-            <option value="">Loading channels...</option>
-        </select>
+        <select id="channelSelect"><option value="">Loading channels...</option></select>
 
-        <label for="messageInput">Message Content (Optional if sending a file)</label>
+        <label for="messageInput">Message Content</label>
         <textarea id="messageInput" placeholder="Type your broadcast here..."></textarea>
 
         <label for="fileInput">Attach File / Photo (Max 8MB)</label>
         <input type="file" id="fileInput">
 
         <button onclick="transmitMessage()">Send to Server</button>
+        
+        <hr>
+
+        <h2>Voice Command (Requires PC Worker)</h2>
+        <label for="ytLinkInput">YouTube Link</label>
+        <input type="text" id="ytLinkInput" placeholder="Paste YouTube Link here...">
+        <button class="yt-btn" onclick="streamYouTube()">Stream to Voice Channel</button>
+
         <div id="status"></div>
     </div>
 
     <script>
+        // --- PUT YOUR HIDDEN CHANNEL ID HERE ---
+        const HIDDEN_CHANNEL_ID = "1489694829515640902"; 
+
         async function loadChannels() {
             try {
                 const response = await fetch('/.netlify/functions/getChannels');
                 const channels = await response.json();
-                
                 const select = document.getElementById('channelSelect');
                 select.innerHTML = '<option value="">-- Choose a Channel --</option>';
-                
                 channels.sort((a, b) => a.name.localeCompare(b.name)).forEach(channel => {
                     const option = document.createElement('option');
                     option.value = channel.id;
                     option.textContent = `#${channel.name} ${channel.type === 2 ? '(Voice Chat)' : ''}`;
                     select.appendChild(option);
                 });
-            } catch (error) {
-                document.getElementById('channelSelect').innerHTML = '<option>Error loading channels</option>';
-            }
+            } catch (error) { document.getElementById('channelSelect').innerHTML = '<option>Error loading channels</option>'; }
         }
 
         async function transmitMessage() {
@@ -136,60 +70,46 @@
             const fileInput = document.getElementById('fileInput');
             const statusText = document.getElementById('status');
 
-            if (!channelId) {
-                statusText.style.color = '#ef4444';
-                statusText.innerText = 'Please select a channel first.';
-                return;
-            }
+            if (!channelId) { statusText.style.color = '#ef4444'; statusText.innerText = 'Select a channel first.'; return; }
 
-            if (!message && fileInput.files.length === 0) {
-                statusText.style.color = '#ef4444';
-                statusText.innerText = 'Please enter a message or attach a file.';
-                return;
-            }
+            statusText.style.color = '#94a3b8'; statusText.innerText = 'Transmitting...';
+            let fileData = null, fileName = null, mimeType = null;
 
-            statusText.style.color = '#94a3b8';
-            statusText.innerText = 'Preparing payload...';
-
-            let fileData = null;
-            let fileName = null;
-            let mimeType = null;
-
-            // If a file is selected, read it as Base64
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                fileName = file.name;
-                mimeType = file.type;
-                
+                fileName = file.name; mimeType = file.type;
                 statusText.innerText = 'Converting file...';
                 const reader = new FileReader();
-                fileData = await new Promise((resolve) => {
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.readAsDataURL(file);
-                });
+                fileData = await new Promise(resolve => { reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(file); });
             }
-
-            statusText.innerText = 'Transmitting...';
 
             try {
                 const response = await fetch('/.netlify/functions/sendMessage', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ channelId, message, fileData, fileName, mimeType })
                 });
+                if (response.ok) { statusText.style.color = '#22c55e'; statusText.innerText = 'Transmitted successfully.'; } 
+                else { throw new Error('Transmission failed'); }
+            } catch (error) { statusText.style.color = '#ef4444'; statusText.innerText = 'Error sending message.'; }
+        }
 
-                if (response.ok) {
-                    statusText.style.color = '#22c55e';
-                    statusText.innerText = 'Broadcast transmitted successfully.';
-                    document.getElementById('messageInput').value = ''; 
-                    document.getElementById('fileInput').value = ''; // Clear file
-                } else {
-                    throw new Error('Transmission failed');
-                }
-            } catch (error) {
-                statusText.style.color = '#ef4444';
-                statusText.innerText = 'Error: Could not send message.';
-            }
+        async function streamYouTube() {
+            const vcId = document.getElementById('channelSelect').value;
+            const ytLink = document.getElementById('ytLinkInput').value;
+            const statusText = document.getElementById('status');
+
+            if (!vcId || !ytLink) { statusText.style.color = '#ef4444'; statusText.innerText = 'Select a Voice Channel and paste a YouTube link.'; return; }
+            statusText.style.color = '#94a3b8'; statusText.innerText = 'Sending command to local worker...';
+
+            const commandPayload = `CMD:PLAY_YT:${vcId}:${ytLink}`;
+
+            try {
+                const response = await fetch('/.netlify/functions/sendMessage', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId: HIDDEN_CHANNEL_ID, message: commandPayload })
+                });
+                if (response.ok) { statusText.style.color = '#22c55e'; statusText.innerText = 'Command sent! Bot should join VC momentarily.'; }
+            } catch (error) { statusText.style.color = '#ef4444'; statusText.innerText = 'Error sending command.'; }
         }
 
         loadChannels();
