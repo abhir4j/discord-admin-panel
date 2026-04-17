@@ -11,12 +11,20 @@
         label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #cbd5e1; }
         select, textarea, input[type="text"], input[type="file"] { width: 100%; background-color: #0f172a; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; padding: 12px; margin-bottom: 20px; box-sizing: border-box; }
         textarea { resize: vertical; height: 80px; }
-        button { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: background-color 0.2s; }
-        button:hover { background-color: #2563eb; }
+        button { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: background-color 0.2s, filter 0.2s; }
+        button:hover { filter: brightness(1.1); }
         .yt-btn { background-color: #ef4444; }
         .yt-btn:hover { background-color: #dc2626; }
         .disconnect-btn { background-color: #64748b; margin-top: 5px; }
         .disconnect-btn:hover { background-color: #475569; }
+        
+        /* Spotify Player Buttons */
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-play { background-color: #10b981; }
+        .btn-pause { background-color: #f59e0b; }
+        .btn-resume { background-color: #3b82f6; }
+        .btn-skip { background-color: #ef4444; }
+
         #status { margin-top: 15px; font-size: 0.9rem; text-align: center; font-weight: 500; }
         hr { border: 0; height: 1px; background: #334155; margin: 25px 0; }
     </style>
@@ -46,6 +54,20 @@
         <button class="disconnect-btn" onclick="disconnectBot()">Disconnect Bot</button>
 
         <hr>
+        
+        <h2>🎵 Spotify Music Player</h2>
+        <label for="musicLinkInput">Spotify Track or Playlist Link</label>
+        <input type="text" id="musicLinkInput" placeholder="Paste Spotify URL here...">
+
+        <div class="btn-group">
+            <button class="btn-play" onclick="musicCommand('PLAY')">▶ Play</button>
+            <button class="btn-pause" onclick="musicCommand('PAUSE')">⏸ Pause</button>
+            <button class="btn-resume" onclick="musicCommand('RESUME')">▶️ Resume</button>
+            <button class="btn-skip" onclick="musicCommand('SKIP')">⏭ Skip</button>
+        </div>
+
+        <hr>
+
         <h2>Instant Soundboard</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <button onclick="playSFX('atmkbfjg-echo')" style="background-color: #f59e0b;"> atmkbfjg-echo </button>
@@ -62,7 +84,6 @@
             <button onclick="playSFX('punjabi-tmkc')" style="background-color: #f59e0b;">Punjabi</button>
             <button onclick="playSFX('trollywood1')" style="background-color: #f59e0b;">Trollywood 1</button>
             <button onclick="playSFX('TROLLYWOOD2.2')" style="background-color: #f59e0b;">Trollywood 2.2</button>
-            
         </div>
 
         <div id="status"></div>
@@ -192,7 +213,6 @@
             statusText.style.color = '#94a3b8'; 
             statusText.innerText = `Deploying ${soundName}.mp3...`;
 
-            // Format the command: CMD:SFX:VoiceChannelID:soundName
             const commandPayload = `CMD:SFX:${vcId}:${soundName}`;
 
             try {
@@ -209,6 +229,45 @@
             } catch (error) { 
                 statusText.style.color = '#ef4444'; 
                 statusText.innerText = 'Error sending SFX command.'; 
+            }
+        }
+
+        async function musicCommand(action) {
+            const vcId = document.getElementById('channelSelect').value;
+            const linkInput = document.getElementById('musicLinkInput').value;
+            const statusText = document.getElementById('status');
+
+            if (!vcId) { 
+                statusText.style.color = '#ef4444'; 
+                statusText.innerText = 'Select a Destination Channel first.'; 
+                return; 
+            }
+
+            if (action === 'PLAY' && !linkInput) {
+                statusText.style.color = '#ef4444'; 
+                statusText.innerText = 'Paste a Spotify link to play.'; 
+                return;
+            }
+
+            statusText.style.color = '#94a3b8'; 
+            statusText.innerText = `Sending ${action} command to bot...`;
+
+            let commandPayload = `CMD:MUSIC:${action}:${vcId}`;
+            if (action === 'PLAY') commandPayload += `:${linkInput}`;
+
+            try {
+                const response = await fetch('/.netlify/functions/sendMessage', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId: HIDDEN_CHANNEL_ID, message: commandPayload })
+                });
+                
+                if (response.ok) { 
+                    statusText.style.color = '#22c55e'; 
+                    statusText.innerText = `Music ${action} command sent!`; 
+                }
+            } catch (error) { 
+                statusText.style.color = '#ef4444'; 
+                statusText.innerText = 'Error sending command.'; 
             }
         }
 
